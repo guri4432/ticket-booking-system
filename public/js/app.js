@@ -3,7 +3,7 @@
    Single-page app driving the movie booking workflow
    ═══════════════════════════════════════════════════════════════ */
 
-const API = 'http://localhost:3000/api';
+const API = window.location.origin + '/api';
 
 // ── State ─────────────────────────────────────────────────────
 const state = {
