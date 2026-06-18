@@ -47,9 +47,22 @@ app.get('/api/health', (_req, res) => {
 });
 
 // ⭐ TEMPORARY SEED ROUTE
-app.get('/seed', (_req, res) => {
-  require('./seed');
-  res.send('Database seeded successfully');
+app.get('/api/seed', (_req, res) => {
+  try {
+    require('./seed');
+
+    res.json({
+      success: true,
+      message: 'Database seeded'
+    });
+
+  } catch (err) {
+
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
 });
 
 // 404 handler
