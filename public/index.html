@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Book movie tickets online — select seats, lock and confirm your booking instantly." />
+  <title>CineBook — Movie Ticket Booking</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <!-- ── Top Nav ───────────────────────────────────────────────── -->
+  <nav class="navbar" id="navbar">
+    <div class="nav-brand" onclick="navigateTo('shows')">
+      <span class="brand-icon">🎬</span>
+      <span class="brand-text">Cine<span class="brand-accent">Book</span></span>
+    </div>
+    <div class="nav-links">
+      <button class="nav-btn active" data-page="shows" onclick="navigateTo('shows')">Now Showing</button>
+      <button class="nav-btn" data-page="bookings" onclick="navigateTo('bookings')">My Bookings</button>
+    </div>
+    <div class="nav-user">
+      <div class="user-avatar" id="userAvatar">G</div>
+      <span class="user-name" id="userName">Guest</span>
+    </div>
+  </nav>
+
+  <!-- ── Main Content ──────────────────────────────────────────── -->
+  <main class="main-content">
+
+    <!-- Page: Shows Listing -->
+    <section id="page-shows" class="page active">
+      <div class="page-header">
+        <h1>Now Showing</h1>
+        <p class="subtitle">Pick a movie and showtime to start booking</p>
+      </div>
+      <div class="shows-grid" id="showsGrid">
+        <!-- Dynamically populated -->
+      </div>
+    </section>
+
+    <!-- Page: Seat Selection -->
+    <section id="page-seats" class="page">
+      <div class="page-header">
+        <button class="back-btn" onclick="navigateTo('shows')">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+          Back to Shows
+        </button>
+        <div class="show-info-banner" id="showInfoBanner">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+
+      <div class="seat-section">
+        <!-- Screen Indicator -->
+        <div class="screen-wrapper">
+          <div class="screen-curve"></div>
+          <span class="screen-label">SCREEN</span>
+        </div>
+
+        <!-- Seat Map -->
+        <div class="seat-map" id="seatMap">
+          <!-- Dynamically populated -->
+        </div>
+
+        <!-- Legend -->
+        <div class="seat-legend">
+          <div class="legend-item"><div class="legend-box available"></div> Available</div>
+          <div class="legend-item"><div class="legend-box selected"></div> Selected</div>
+          <div class="legend-item"><div class="legend-box locked"></div> Locked</div>
+          <div class="legend-item"><div class="legend-box booked"></div> Booked</div>
+        </div>
+      </div>
+
+      <!-- Booking Summary Sidebar -->
+      <div class="booking-sidebar" id="bookingSidebar">
+        <div class="sidebar-card">
+          <h3>Booking Summary</h3>
+          <div class="summary-details" id="summaryDetails">
+            <p class="empty-state">Select seats to continue</p>
+          </div>
+          <div class="summary-actions" id="summaryActions" style="display:none">
+            <button class="btn btn-primary btn-lg" id="btnLockSeats" onclick="handleLockSeats()">
+              Lock Seats
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Page: Booking Confirmation -->
+    <section id="page-confirm" class="page">
+      <div class="confirm-container" id="confirmContainer">
+        <!-- Dynamically populated -->
+      </div>
+    </section>
+
+    <!-- Page: My Bookings -->
+    <section id="page-bookings" class="page">
+      <div class="page-header">
+        <h1>My Bookings</h1>
+        <p class="subtitle">View and manage your ticket bookings</p>
+      </div>
+      <div class="bookings-list" id="bookingsList">
+        <!-- Dynamically populated -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ── Toast Container ───────────────────────────────────────── -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- ── Loading Overlay ───────────────────────────────────────── -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
