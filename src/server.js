@@ -13,7 +13,7 @@ const bookingRoutes = require('./routes/bookingRoutes');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ── Middleware ────────────────────────────────────────────────────────────────
+// ── Middleware ─────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
 
@@ -22,12 +22,16 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 
 // Request logger
 app.use((req, _res, next) => {
-  if (!req.url.startsWith('/api')) return next(); // skip logging static files
-  console.log(`${new Date().toISOString()}  ${req.method}  ${req.url}`);
+  if (!req.url.startsWith('/api')) return next();
+
+  console.log(
+    `${new Date().toISOString()} ${req.method} ${req.url}`
+  );
+
   next();
 });
 
-// ── Routes ───────────────────────────────────────────────────────────────────
+// ── API Routes ────────────────────────────────────────
 app.use('/api/movies', movieRoutes);
 app.use('/api/screens', screenRoutes);
 app.use('/api/shows', showRoutes);
@@ -36,26 +40,43 @@ app.use('/api/bookings', bookingRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// ⭐ TEMPORARY SEED ROUTE
+app.get('/seed', (_req, res) => {
+  require('./seed');
+  res.send('Database seeded successfully');
 });
 
 // 404 handler
 app.use((_req, res) => {
-  res.status(404).json({ success: false, error: 'Route not found' });
+  res.status(404).json({
+    success: false,
+    error: 'Route not found'
+  });
 });
 
 // Global error handler
 app.use((err, _req, res, _next) => {
   console.error('Unhandled error:', err);
-  res.status(500).json({ success: false, error: 'Internal server error' });
+
+  res.status(500).json({
+    success: false,
+    error: 'Internal server error'
+  });
 });
 
-// ── Start ────────────────────────────────────────────────────────────────────
+// ── Start ─────────────────────────────────────────────
 initializeDatabase();
 
 app.listen(PORT, () => {
-  console.log(`\n🎬  Movie Booking System API running at http://localhost:${PORT}`);
-  console.log(`    Health check: http://localhost:${PORT}/api/health\n`);
+  console.log(
+    `🎬 Movie Booking System API running on port ${PORT}`
+  );
 });
 
 module.exports = app;
