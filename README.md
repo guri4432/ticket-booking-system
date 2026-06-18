@@ -1,356 +1,443 @@
-# 🎬 Movie Booking System — Backend API
+# 🎬 Movie Booking System — Full Stack Application
 
-A Node.js + Express backend service that manages movie show scheduling, seat availability, and the complete booking workflow with **double-booking prevention** via seat locking.
+A full-stack movie ticket booking application built using **Node.js, Express.js, SQLite, HTML, CSS, and JavaScript**.
 
----
-
-## Table of Contents
-
-- [Tech Stack](#tech-stack)
-- [Getting Started](#getting-started)
-- [Booking Flow](#booking-flow)
-- [Seat Locking Logic](#seat-locking-logic)
-- [API Reference](#api-reference)
-  - [Movies](#movies)
-  - [Screens](#screens)
-  - [Shows](#shows)
-  - [Seats](#seats)
-  - [Bookings](#bookings)
-- [Database Schema](#database-schema)
+This application allows users to browse movie shows, view seat availability, select seats, create bookings, and confirm or cancel reservations. It also includes a robust backend system that prevents double booking through an efficient seat-locking mechanism.
 
 ---
 
-## Tech Stack
+## 📌 Table of Contents
 
-| Layer        | Technology     |
-|------------- |--------------- |
-| Runtime      | Node.js        |
-| Framework    | Express.js     |
-| Database     | SQLite (via `better-sqlite3`) |
-| UUID         | `uuid` v4      |
+* Project Overview
+* Features
+* Tech Stack
+* Project Architecture
+* Getting Started
+* Booking Workflow
+* Seat Locking Logic
+* API Reference
+* Database Schema
+* Project Structure
+* Future Improvements
 
 ---
 
-## Getting Started
+# 📖 Project Overview
 
-### Prerequisites
+The Movie Booking System is a full-stack web application that simulates a real-world movie ticket booking platform.
 
-- **Node.js** ≥ 18
+The system manages:
 
-### Installation
+* Movie creation
+* Screen management
+* Show scheduling
+* Seat generation
+* Seat availability
+* Seat locking
+* Booking creation
+* Booking confirmation
+* Booking cancellation
+* Double-booking prevention
+
+The project demonstrates how modern booking systems maintain data consistency when multiple users try to reserve the same seat simultaneously.
+
+---
+
+# ✨ Features
+
+### Frontend Features
+
+* Interactive user interface
+* Dynamic movie and show display
+* Seat selection interface
+* Booking management pages
+
+### Backend Features
+
+* RESTful API architecture
+* Movie management
+* Screen management
+* Show scheduling
+* Dynamic seat generation
+* Booking lifecycle management
+* Automatic lock expiration
+* Double-booking prevention
+
+---
+
+# 🛠️ Tech Stack
+
+| Layer             | Technology                |
+| ----------------- | ------------------------- |
+| Frontend          | HTML, CSS, JavaScript     |
+| Runtime           | Node.js                   |
+| Backend Framework | Express.js                |
+| Database          | SQLite (`better-sqlite3`) |
+| UUID Generator    | uuid v4                   |
+
+---
+
+# 🏗️ Project Architecture
+
+```text
+User Interface
+
+↓
+
+Frontend (HTML, CSS, JavaScript)
+
+↓
+
+Express.js Server
+
+↓
+
+Routes
+
+↓
+
+Models
+
+↓
+
+SQLite Database
+```
+
+---
+
+# 🚀 Getting Started
+
+## Prerequisites
+
+Install:
+
+* Node.js (v18 or above)
+* VS Code (recommended)
+
+## Installation
+
+Clone repository:
 
 ```bash
-# Clone the repository
-git clone <your-repo-url>
+git clone <repository-url>
+
 cd movie-booking-system
+```
 
-# Install dependencies
+Install dependencies:
+
+```bash
 npm install
+```
 
-# (Optional) Seed the database with sample data
+Seed sample data:
+
+```bash
 npm run seed
+```
 
-# Start the server
+Start server:
+
+```bash
 npm start
+```
 
-# Or start in dev mode (auto-restart on file changes)
+Development mode:
+
+```bash
 npm run dev
 ```
 
-The server starts at **`http://localhost:3000`** by default.  
-Override the port with the `PORT` environment variable.
+Open browser:
 
----
-
-## Booking Flow
-
-The application follows a strict sequential workflow to ensure data integrity:
-
-```
-1.  Create Movie          POST /api/movies
-          ↓
-2.  Create Screen         POST /api/screens
-          ↓
-3.  Create Show           POST /api/shows
-    (links Movie + Screen + Time; auto-generates seat layout)
-          ↓
-4.  Fetch Seat Layout     GET  /api/seats/:showId
-          ↓
-5.  Select & Lock Seats   POST /api/seats/:showId/lock
-    (seats transition: AVAILABLE → LOCKED)
-          ↓
-6.  Create Booking        POST /api/bookings
-    (booking created in INITIATED status)
-          ↓
-7a. Confirm Booking       PATCH /api/bookings/:id/confirm
-    (seats transition: LOCKED → BOOKED, booking → CONFIRMED)
-          — or —
-7b. Cancel Booking        PATCH /api/bookings/:id/cancel
-    (seats transition: LOCKED → AVAILABLE, booking → CANCELLED)
-```
-
-### Status Transitions
-
-**Seat Statuses:**
-| Status      | Meaning |
-|------------ |-------- |
-| `AVAILABLE` | Seat is free and can be selected |
-| `LOCKED`    | Seat is temporarily reserved by a user (5-minute timeout) |
-| `BOOKED`    | Seat is confirmed and cannot be changed |
-
-**Booking Statuses:**
-| Status      | Meaning |
-|------------ |-------- |
-| `INITIATED` | Booking created, payment pending |
-| `CONFIRMED` | Payment successful, seats booked |
-| `CANCELLED` | Booking cancelled, seats released |
-
----
-
-## Seat Locking Logic
-
-The locking mechanism prevents double-booking under concurrent access:
-
-### How It Works
-
-1. **Lock Request:** When a user selects seats, the system attempts to lock them atomically inside a SQLite transaction.
-2. **Conflict Detection:** If any seat is already `LOCKED` (by another user) or `BOOKED`, the lock request for that seat is **rejected** with a reason.
-3. **Idempotent Re-lock:** If the same user tries to lock a seat they already hold, the lock timestamp is refreshed (no error).
-4. **Auto-Expiry:** Locks older than **5 minutes** are automatically released when the seat layout is fetched or a new lock is attempted. This prevents abandoned locks from blocking seats indefinitely.
-5. **Transactional Safety:** All seat state transitions (lock, book, release) happen inside SQLite transactions, ensuring atomicity even under concurrent requests.
-
-### Conflict Scenario
-
-```
-User A selects seat A1    →  POST /api/seats/:showId/lock  { seatLabels: ["A1"], userId: "userA" }
-                          →  ✅ Seat A1 is now LOCKED by User A
-
-User B selects seat A1    →  POST /api/seats/:showId/lock  { seatLabels: ["A1"], userId: "userB" }
-                          →  ❌ 409 Conflict: "Seat is temporarily reserved by another user"
-
-User A confirms booking   →  PATCH /api/bookings/:id/confirm
-                          →  ✅ Seat A1 is now BOOKED
+```text
+http://localhost:3000
 ```
 
 ---
 
-## API Reference
+# 🎟️ Booking Workflow
 
-All endpoints return JSON in the format:
-```json
-{
-  "success": true | false,
-  "data": { ... },
-  "error": "message (only on failure)"
-}
-```
+The application follows a structured workflow.
 
-### Health Check
+```text
+Create Movie
 
-| Method | Endpoint       | Description       |
-|------- |--------------- |------------------ |
-| GET    | `/api/health`  | Server health check |
+↓
 
----
+Create Screen
 
-### Movies
+↓
 
-| Method | Endpoint          | Description        |
-|------- |------------------ |------------------- |
-| POST   | `/api/movies`     | Create a movie     |
-| GET    | `/api/movies`     | List all movies    |
-| GET    | `/api/movies/:id` | Get movie by ID    |
+Create Show
 
-**POST /api/movies — Request Body:**
-```json
-{
-  "title": "Avengers: Endgame",
-  "duration": 181,
-  "genre": "Action"
-}
-```
+↓
 
----
+Generate Seat Layout
 
-### Screens
+↓
 
-| Method | Endpoint           | Description        |
-|------- |------------------- |------------------- |
-| POST   | `/api/screens`     | Create a screen    |
-| GET    | `/api/screens`     | List all screens   |
-| GET    | `/api/screens/:id` | Get screen by ID   |
+Fetch Available Seats
 
-**POST /api/screens — Request Body:**
-```json
-{
-  "name": "Screen 1",
-  "totalRows": 5,
-  "seatsPerRow": 10
-}
+↓
+
+Select Seats
+
+↓
+
+Lock Seats
+
+↓
+
+Create Booking
+
+↓
+
+Confirm Booking
+
+or
+
+Cancel Booking
 ```
 
 ---
 
-### Shows
+# 🔄 Status Transitions
 
-| Method | Endpoint         | Description      |
-|------- |----------------- |----------------- |
-| POST   | `/api/shows`     | Create a show    |
-| GET    | `/api/shows`     | List all shows   |
-| GET    | `/api/shows/:id` | Get show by ID   |
+## Seat Status
 
-**POST /api/shows — Request Body:**
-```json
-{
-  "movieId": "<movie-uuid>",
-  "screenId": "<screen-uuid>",
-  "showTime": "6:00 PM",
-  "showDate": "2026-06-17"
-}
-```
+| Status    | Meaning                      |
+| --------- | ---------------------------- |
+| AVAILABLE | Seat is available            |
+| LOCKED    | Seat is temporarily reserved |
+| BOOKED    | Seat is permanently booked   |
 
-> Creating a show automatically generates the full seat layout (rows × columns) for that show.
+## Booking Status
+
+| Status    | Meaning            |
+| --------- | ------------------ |
+| INITIATED | Booking created    |
+| CONFIRMED | Booking successful |
+| CANCELLED | Booking cancelled  |
 
 ---
 
-### Seats
+# 🔒 Seat Locking Logic
 
-| Method | Endpoint                    | Description               |
-|------- |---------------------------- |-------------------------- |
-| GET    | `/api/seats/:showId`        | Get seat layout for show  |
-| POST   | `/api/seats/:showId/lock`   | Lock selected seats       |
-| POST   | `/api/seats/:showId/unlock` | Unlock selected seats     |
+The system prevents multiple users from booking the same seat simultaneously.
 
-**POST /api/seats/:showId/lock — Request Body:**
-```json
-{
-  "seatLabels": ["A1", "A2", "A3"],
-  "userId": "user123"
-}
+## How It Works
+
+1. User selects seats.
+2. The system attempts to lock those seats.
+3. If seats are already locked or booked, the request is rejected.
+4. Locks automatically expire after 5 minutes.
+5. All operations are executed inside SQLite transactions.
+
+### Example
+
+```text
+User A selects A1
+
+↓
+
+Seat A1 → LOCKED
+
+↓
+
+User B selects A1
+
+↓
+
+Request Rejected
+
+↓
+
+User A confirms booking
+
+↓
+
+Seat A1 → BOOKED
 ```
 
-**Response (conflict):**
-```json
-{
-  "success": false,
-  "message": "Some seats could not be locked",
-  "data": {
-    "success": false,
-    "lockedSeats": ["A1"],
-    "failedSeats": [
-      { "label": "A2", "reason": "Seat is temporarily reserved by another user" }
-    ]
-  }
-}
+This mechanism prevents double booking.
+
+---
+
+# 🌐 API Reference
+
+All APIs return JSON responses.
+
+## Movies
+
+| Method | Endpoint        |
+| ------ | --------------- |
+| POST   | /api/movies     |
+| GET    | /api/movies     |
+| GET    | /api/movies/:id |
+
+---
+
+## Screens
+
+| Method | Endpoint         |
+| ------ | ---------------- |
+| POST   | /api/screens     |
+| GET    | /api/screens     |
+| GET    | /api/screens/:id |
+
+---
+
+## Shows
+
+| Method | Endpoint       |
+| ------ | -------------- |
+| POST   | /api/shows     |
+| GET    | /api/shows     |
+| GET    | /api/shows/:id |
+
+---
+
+## Seats
+
+| Method | Endpoint                  |
+| ------ | ------------------------- |
+| GET    | /api/seats/:showId        |
+| POST   | /api/seats/:showId/lock   |
+| POST   | /api/seats/:showId/unlock |
+
+---
+
+## Bookings
+
+| Method | Endpoint                  |
+| ------ | ------------------------- |
+| POST   | /api/bookings             |
+| GET    | /api/bookings             |
+| GET    | /api/bookings/:id         |
+| PATCH  | /api/bookings/:id/confirm |
+| PATCH  | /api/bookings/:id/cancel  |
+
+---
+
+# 🗄️ Database Schema
+
+## Movies
+
+```text
+id
+title
+duration
+genre
+created_at
+```
+
+## Screens
+
+```text
+id
+name
+total_rows
+seats_per_row
+created_at
+```
+
+## Shows
+
+```text
+id
+movie_id
+screen_id
+show_time
+show_date
+created_at
+```
+
+## Seats
+
+```text
+id
+show_id
+seat_label
+status
+locked_by
+locked_at
+```
+
+## Bookings
+
+```text
+id
+show_id
+user_id
+status
+created_at
+updated_at
 ```
 
 ---
 
-### Bookings
+# 📁 Project Structure
 
-| Method | Endpoint                       | Description         |
-|------- |------------------------------- |-------------------- |
-| POST   | `/api/bookings`                | Create a booking    |
-| GET    | `/api/bookings`                | List all bookings   |
-| GET    | `/api/bookings?userId=xxx`     | List user bookings  |
-| GET    | `/api/bookings/:id`            | Get booking by ID   |
-| PATCH  | `/api/bookings/:id/confirm`    | Confirm booking     |
-| PATCH  | `/api/bookings/:id/cancel`     | Cancel booking      |
-
-**POST /api/bookings — Request Body:**
-```json
-{
-  "showId": "<show-uuid>",
-  "userId": "user123",
-  "seatLabels": ["A1", "A2"]
-}
-```
-
-> ⚠️ Seats **must** be locked by the user before creating a booking.
-
----
-
-## Database Schema
-
-```
-movies
-├── id (PK)
-├── title
-├── duration
-├── genre
-└── created_at
-
-screens
-├── id (PK)
-├── name (UNIQUE)
-├── total_rows
-├── seats_per_row
-└── created_at
-
-shows
-├── id (PK)
-├── movie_id (FK → movies)
-├── screen_id (FK → screens)
-├── show_time
-├── show_date
-├── created_at
-└── UNIQUE(screen_id, show_time, show_date)
-
-seats
-├── id (PK)
-├── show_id (FK → shows)
-├── seat_label (e.g. "A1")
-├── row_label
-├── col_number
-├── status (AVAILABLE | LOCKED | BOOKED)
-├── locked_by
-├── locked_at
-└── UNIQUE(show_id, seat_label)
-
-bookings
-├── id (PK)
-├── show_id (FK → shows)
-├── user_id
-├── status (INITIATED | CONFIRMED | CANCELLED)
-├── created_at
-└── updated_at
-
-booking_seats (junction)
-├── booking_id (FK → bookings)
-└── seat_id (FK → seats)
-```
-
----
-
-## Project Structure
-
-```
+```text
 movie-booking-system/
-├── src/
-│   ├── database/
-│   │   └── db.js            # SQLite initialization & schema
-│   ├── models/
-│   │   ├── movieModel.js    # Movie CRUD operations
-│   │   ├── screenModel.js   # Screen CRUD operations
-│   │   ├── showModel.js     # Show creation with seat generation
-│   │   ├── seatModel.js     # Seat locking & availability logic
-│   │   └── bookingModel.js  # Booking lifecycle management
-│   ├── routes/
-│   │   ├── movieRoutes.js   # /api/movies endpoints
-│   │   ├── screenRoutes.js  # /api/screens endpoints
-│   │   ├── showRoutes.js    # /api/shows endpoints
-│   │   ├── seatRoutes.js    # /api/seats endpoints
-│   │   └── bookingRoutes.js # /api/bookings endpoints
-│   ├── server.js            # Express app entry point
-│   └── seed.js              # Database seeder
-├── data/                    # SQLite database files (auto-created)
-├── package.json
-├── .gitignore
-└── README.md
+
+public/
+├── css/
+├── js/
+└── index.html
+
+src/
+├── database/
+│   └── db.js
+
+├── models/
+│   ├── bookingModel.js
+│   ├── movieModel.js
+│   ├── screenModel.js
+│   ├── seatModel.js
+│   └── showModel.js
+
+├── routes/
+│   ├── bookingRoutes.js
+│   ├── movieRoutes.js
+│   ├── screenRoutes.js
+│   ├── seatRoutes.js
+│   └── showRoutes.js
+
+├── server.js
+
+└── seed.js
+
+package.json
+
+package-lock.json
+
+README.md
 ```
 
 ---
 
-## License
+# 🔮 Future Improvements
+
+* User authentication
+* Payment gateway integration
+* Admin dashboard
+* Email notifications
+* Movie posters and images
+* Search and filter functionality
+* Cloud database deployment
+
+---
+
+# 👨‍💻 Author
+
+**Gursimran Singh**
+
+B.Tech (AI & ML) | Chandigarh University
+
+---
+
+# 📄 License
 
 ISC
